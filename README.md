@@ -3,7 +3,7 @@ This repository contains a dockerized Jenkins server (based on jenkins/jenkins:l
 
 **This project was tested on the following systems:**
    1) Hetzner Cloud CX21 instance with Ubuntu 20.04 image
-   2) Windows 10 installation with Docker Desktop (and therefore docker-compose)
+   2) Windows 10 with WSL2-based Docker Desktop
 
 
 
@@ -12,28 +12,31 @@ This repository contains a dockerized Jenkins server (based on jenkins/jenkins:l
 This repository contains a Jenkins docker image which can be installed and run with a single CLI command.
 
 The installation does the following:
-	1) Configures the Jenkins server to use the user provided via the startup command
-	2) Secures Jenkins from user registration and sets build and view permission via matrix-auth as follows:
-		*) User provided via startup command is administrator
-		*) All authenticated users can view jobs
-		*) Everyone else can't view anything
-	3) Creates a pipeline from the Jenkinsfile in the repository to execute the main.py script (which is also in the repository) on merge of any PR of the GitHub repo provided in the startup command.
+   1) Creates and configures the Jenkins server to use the user provided via the startup command env variables
+   2) Secures Jenkins from user registration and sets build and view permission via matrix-auth as follows:
+       * User provided via startup command is administrator
+       * All authenticated users can view jobs
+       * Everyone else can't view anything
+       * Jobs are built with triggering user rights (triggeringUsersAuthorizationStrategy)
+   3) Creates a Generic Webhook Trigger Pipeline-style job from the Jenkinsfile in the repository to execute the main.py script (which is also in the repository) on merge of any PR of the GitHub repo provided in the startup command's respective env variable.
 
-
+For a more detailed description of what this project does, please check the "How does it work?" section at the end of this page.
 
 
 ## Requirements
 
 You must have the following:
 1. A docker installation on the runner machine, and docker-compose
-	**NOTE: The machine must be reachable from within GitHub, otherwise Gitscm polling won't work.**
-2. GitHub repository with configured webhook.
-      An example webhook for a repository with *no permissions*:
-      1. Payload URL is set to http://JENKINS_BUILD_USER:JENKINS_BUILD_PASSWORD@YOUR_JENKINS_IP:YOUR_JENKINS_PORT/generic-webhook-trigger/invoke where JENKINS_BUILD_USER and JENKINS_BUILD_PASSWORD is the username-password pair of the user who is authorized to execute builds on the server. **Since this deployment is completely automatic, this user should match the administrator user you'll use during installation!**
+2. Properly set up network - **the machine must be reachable from within GitHub, otherwise GitHub triggers won't reach you.**
+3. GitHub repository with configured webhook.
+      An example webhook for a repository:
+      1. Payload URL is set to:
+	    ```http://JENKINS_BUILD_USER:JENKINS_BUILD_PASSWORD@YOUR_JENKINS_SERVER_EXTERNAL_IP:YOUR_JENKINS_PORT/generic-webhook-trigger/invoke```
+	 where JENKINS_BUILD_USER and JENKINS_BUILD_PASSWORD is the username-password pair of the user who is **authorized to execute builds** on the server. **Since this deployment is completely automatic, this user should match the administrator user you'll use during installation!**
       2. Content type: application/json
       3. Secret: leave empty
-      
-	  I recommend setting the condition of the hook only to allow pull request information.
+      4. Set the condition of the hook only to allow pull request information.
+
 
 
 
@@ -46,7 +49,15 @@ Then, do the following:
 
 ### Linux
 1. Clone this repository.
-2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug JENKINS-41377 in Jenkins, where new build jobs won't auto poll Gitscm**)  - by default it is set to my test repository.
+2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug JENKINS-41377 in Jenkins, where new build jobs will ignore webhooks!**)  - by default it is set to my test repository. This line must be changed:
+```
+pipeline {
+    ... code here ...
+                git branch: 'main', url: 'https://github.com/vladislav-vitalyevich-panin/TestRepository.git' <-- This repository must be changed to your repository's clone URL.
+    ... code here ...
+}
+
+```
 3. Execute the following command (substitute "password" with your preferred Jenkins administrator password, "admin" with the Jenkins admin user name and the URL with your repository address (without .git, but with trailing /, just like in the example below)):
 ```
 JENKINS_ADMIN_ID=admin JENKINS_ADMIN_PASSWORD=password JENKINSFILE_IMPLANTED_GH_REPO=https://github.com/yourUser/yourRepo/ docker-compose up -d
@@ -54,7 +65,16 @@ JENKINS_ADMIN_ID=admin JENKINS_ADMIN_PASSWORD=password JENKINSFILE_IMPLANTED_GH_
 
 ### Windows (with Docker Desktop)
 1. Clone this repository.
-2. Edit the Jenkinsfile with your target repository (**Required!** There is a bug in Jenkins that forces you to perform manual pull at least once.)
+2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug JENKINS-41377 in Jenkins, where new build jobs will ignore webhooks!**)  - by default it is set to my test repository. This line must be changed:
+```
+pipeline {
+    ... code here ...
+                git branch: 'main', url: 'https://github.com/vladislav-vitalyevich-panin/TestRepository.git' <-- This repository must be changed to your repository's clone URL.
+    ... code here ...
+}
+
+```
+
 3. Execute the following command (substitute "password" with your preferred Jenkins administrator password, "admin" with the Jenkins admin user name and the URL with your repository address (without .git, but with trailing /, just like in the example below)) via PowerShell:
 ```
 $env:JENKINS_ADMIN_ID = "admin"; $env:JENKINS_ADMIN_PASSWORD = "password"; $env:JENKINSFILE_IMPLANTED_GH_REPO = "https://github.com/yourUser/yourRepo/"; docker-compose up -d
@@ -79,7 +99,7 @@ I use the official Jenkins LTS docker image configured to use Matrix Authorizati
 ### Internal setup process
 At the startup, docker image pulls some required applications (python3, jq...), see the list below for more information.
 
-I skip the installation, install plugins using jenkins-plugin-cli and use CasC for the config setup (security, permissions and admin user), then my modified jenkins starter executes the "job patcher" which translates the provided Jenkinsfile to a SCM polling job format (Generic Webhook Trigger plugin). The job is executed once (required due to the bug in Jenkins polling mechanism, see [JENKINS-41377 bug on the bug tracker](https://issues.jenkins.io/browse/JENKINS-41377)) and kill the container, forcing a reboot. 
+I skip the installation, install plugins using jenkins-plugin-cli and use CasC for the config setup (security, permissions and admin user), then my modified jenkins starter executes the "job patcher" which translates the provided Jenkinsfile to a SCM triggered job format (Generic Webhook Trigger plugin). The job is executed once (required due to the bug in Jenkins triggering mechanism, see [JENKINS-41377 bug on the bug tracker](https://issues.jenkins.io/browse/JENKINS-41377)) and kill the container, forcing a reboot. 
 
 After it reboots, it's ready to go.
 
