@@ -33,7 +33,7 @@ Then, do the following:
 
 ### Linux
 1. Clone this repository.
-2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug in Jenkins, where new build jobs won't auto poll Gitscm**)  - by default it is set to my test repository.
+2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug JENKINS-41377 in Jenkins, where new build jobs won't auto poll Gitscm**)  - by default it is set to my test repository.
 3. Execute the following command (substitute "password" with your preferred Jenkins administrator password, "admin" with the Jenkins admin user name and the URL with your repository address (without .git, but with trailing /, just like in the example below)):
 ```
 JENKINS_ADMIN_ID=admin JENKINS_ADMIN_PASSWORD=password JENKINSFILE_IMPLANTED_GH_REPO=https://github.com/yourUser/yourRepo/ docker-compose up -d
@@ -41,13 +41,23 @@ JENKINS_ADMIN_ID=admin JENKINS_ADMIN_PASSWORD=password JENKINSFILE_IMPLANTED_GH_
 
 ## How does it work?
 
-I modified the Jenkins LTS docker image to skip the installation wizard and use CasC for the setup.
+### Security
+I use the official Jenkins LTS docker image configured to use Matrix Authorization Strategy with triggeringUsersAuthorizationStrategy policy on builds with Agent-to-Controller Access Control enabled.
+
+### Internal setup process
+At the startup, docker image pulls some required applications (python3, jq...), see the list below for more information.
+
+I skip the installation, install plugins using jenkins-plugin-cli and use CasC for the config setup (security, permissions and admin user), then my modified jenkins starter executes the "job patcher" which translates the provided Jenkinsfile to a SCM polling job format (Generic Webhook Trigger plugin). The job is executed once (required due to the bug in Jenkins polling mechanism, see [JENKINS-41377 bug on the bug tracker](https://issues.jenkins.io/browse/JENKINS-41377)) and kill the container, forcing a reboot. 
+
+After it reboots, it's ready to go.
+
 The list of installed plugins can be found in the Dockerfile (the RUN jenkins-plugin-cli command).
 
-Also, I modified the original jenkins.sh to execute my own payload in the background at the very start of the script, since there is no documentation on the Dockerfile for the latest jenkins:lts image.
+Unfortunately, there is no functionality to generate a job *directly from the Jenkinsfile* programmaticaly in Jenkins natively, so the Jenkinsfile in the repo is translated to the Jenkins CLI job file (XML) via python3 script and loaded into Jenkins with Jenkins CLI.
 
-As for the automatic job creation, there is no functionality to generate a job *directly from the Jenkinsfile* programmaticaly in Jenkins natively, so the Jenkinsfile in the repo is translated to the Jenkins CLI job file (XML) via python3 script and loaded into Jenkins with my payload. 
+Surprisingly, the Jenkins team also disabled the ability to get CRUMB from a script, making it impossible to fetch API token programmatically with it's current REST API (their documentation suggests to get the token manually instead), so a manual CSRF protection override is done for job injection, and then CSRF protection is re-enabled.
 
+## Storage
 Additions to the docker image comprise of:
    * Updating the APT repositories (negligible storage requirements)
    * python3 (around 52MB)
