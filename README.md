@@ -44,6 +44,8 @@ You must have the following:
 
 ## How to use? / Installation
 
+**Note: Please give the containers full 3 minutes to launch on Linux, and full 5 minutes to launch on Windows. The container restarts in the process!**
+
 First, ensure that you have the requirements from the previous section.
 Then, do the following:
 
