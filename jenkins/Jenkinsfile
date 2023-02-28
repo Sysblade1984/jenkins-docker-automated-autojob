@@ -6,7 +6,7 @@ pipeline {
                 expression { return params.current_status == "closed" && params.merged == true }
             }
             steps {
-                git branch: 'main', url: 'https://github.com/vladislav-viktorovich-panin/TestRepository.git'
+                git branch: 'main', url: 'https://github.com/vladislav-vitalyevich-panin/TestRepository.git'
                 echo 'Executing Python script main.py provided as part of the installation...'
                     sh 'cd ../../../tmp/custom_scripts/ && python3 main.py'
                 echo 'Execution complete.'
