@@ -33,8 +33,8 @@ Then, do the following:
 
 ### Linux
 1. Clone this repository.
-2. Edit Jenkinsfile to contain URL of your repository on the "git" invokation (**REQUIRED due to a bug in Jenkins, where new build jobs won't auto poll Gitscm**)  - by default it is set to my test repository.
-3. Execute the following command (substitute "password" with your preferred Jenkins administrator password, "admin" with the Jenkins admin user name and the URL with your repository address):
+2. Edit Jenkinsfile to contain the clone URL of your repository (with .git) on the line with "git" invokation (**REQUIRED due to a bug in Jenkins, where new build jobs won't auto poll Gitscm**)  - by default it is set to my test repository.
+3. Execute the following command (substitute "password" with your preferred Jenkins administrator password, "admin" with the Jenkins admin user name and the URL with your repository address (without .git, but with trailing /, just like in the example below)):
 ```
 JENKINS_ADMIN_ID=admin JENKINS_ADMIN_PASSWORD=password JENKINSFILE_IMPLANTED_GH_REPO=https://github.com/yourUser/yourRepo/ docker-compose up -d
 ```
