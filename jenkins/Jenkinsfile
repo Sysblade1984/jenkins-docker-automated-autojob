@@ -1,0 +1,16 @@
+pipeline {
+    agent any
+    stages {
+        stage('PythonScript') {
+            when {
+                expression { return params.current_status == "closed" && params.merged == true }
+            }
+            steps {
+                git branch: 'main', url: 'https://github.com/Sysblade1984/TestRepository.git'
+                echo 'Executing Python script main.py provided as part of the installation...'
+                    sh 'cd ../../../tmp/custom_scripts/ && python3 main.py'
+                echo 'Execution complete.'
+            }
+        }
+    }
+}

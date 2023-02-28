@@ -1,0 +1,22 @@
+jenkins:
+  securityRealm:
+    local:
+      allowsSignup: false
+      users: #Passed via env
+       - id: ${JENKINS_ADMIN_ID}
+         password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy:
+      globalMatrix: #Setting up auth strategy via Matrix Authorization Strategy plugin
+        permissions:
+          - "USER:Overall/Administer:${JENKINS_ADMIN_ID}"
+          - "GROUP:Overall/Read:authenticated"
+  remotingSecurity: #This is for Agent-to-Controller Access Control
+    enabled: true
+security:
+  queueItemAuthenticator:
+    authenticators: #Build authentication is via the user perms
+    - global:
+        strategy: triggeringUsersAuthorizationStrategy
+unclassified:
+  location:
+    url: http://localhost:8080/
