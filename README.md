@@ -119,3 +119,5 @@ Additions to the docker image comprise of:
    * Payload (around 3.5MB)
    
    Total additions take about 56.5MB of storage, with majority (92.035%) of the space taken by python3.
+
+This project is licensed under the terms of the GNU Affero General Public License v3.0, the copy of which is located in this repository (LICENSE.md file).
